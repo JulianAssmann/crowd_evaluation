@@ -5,13 +5,15 @@ from .ground_truth_dataset import GroundTruthDataset
 
 
 class SyntheticDataset(GroundTruthDataset):
-
     def __init__(self,
                  num_samples: int = 1000,
                  num_workers: int = 3,
                  max_error_perc: float = 10.0,
                  p_true: Optional[List[float]] = None,
-                 sample_fractions: Optional[List[float]] = None):
+                 sample_fractions: Optional[List[float]] = None,
+                 prefilter_mode: str = None,
+                 prefilter_threshold: float = 0.4,
+                 debug: bool = False):
         """
         :param num_samples: The total number of samples to be generated.
         :param num_workers: The number of workers to be generated.
@@ -36,7 +38,7 @@ class SyntheticDataset(GroundTruthDataset):
             self._p_true = np.array(p_true)
 
         df = self._simulate_voting()
-        super().__init__(df)
+        super().__init__(df, prefilter_mode, prefilter_threshold, debug)
 
     def get_true_error_rates_for_workers(self, workers: Union[List[int], np.ndarray]) -> np.ndarray:
         """Returns the true error rates based on the gold standard for the given workers.

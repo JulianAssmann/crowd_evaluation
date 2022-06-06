@@ -4,26 +4,62 @@ import numpy as np
 
 
 class VoteAggregator:
-    def __init__(self, dataset: Dataset):
-        self.dataset = dataset
+    @staticmethod
+    def filter_spammers(
+            workers: np.ndarray,
+            threshold: float,
+            p_ests: np.ndarray,
+            confs: np.ndarray = None,
+            method="error rates",
 
-    def majority_vote(self, samples: Union[List, np.ndarray] = None):
+    ) -> np.ndarray:
+        """
+        Identifies spammers amongst the given workers by their error rate and threshold and returns an array of the
+        workers identified as spammers.
+
+        :param workers: The workers to be evaluated.
+        :param threshold: The threshold for identifying a worker as spammer.
+        :param p_ests: The error rate estimations for the given workers.
+        :param confs: The half-sizes of the confidence intervals for the given workers.
+        Must not be None for methods "lower bound" and "upper bound".
+        :param method: The method by which to classify spammers.
+        "error rates" classifies workers with an estimated error rate above the threshold as spammers.
+        "lower bound" classifies workers with the lower bound of the confidence interval above the threshold as spammers.
+        "upper bound" classifies workers with the upper bound of the confidence interval above the threshold as spammers.
+        :return: An array of the workers identified as spammers.
+        """
+        assert(p_ests is not None)
+        if method == "error rates":
+            spam_filter = np.where(p_ests > threshold)[0]
+            return workers[spam_filter]
+        elif method == "lower bound":
+            if confs is None:
+                raise ValueError("The confidence intervals cannot be None for method lower_bound")
+
+            spam_filter = np.where(p_ests - confs > threshold)[0]
+            return workers[spam_filter]
+        elif method == "upper bound":
+            if confs is None:
+                raise ValueError("The confidence intervals cannot be None for method lower_bound")
+            pass
+
+            spam_filter = np.where(p_ests + confs > threshold)[0]
+            return workers[spam_filter]
+        else:
+            raise ValueError("Invalid method.")
+
+    @staticmethod
+    def majority_vote(dataset: Dataset, samples: Union[List, np.ndarray] = None):
         if samples is None:
-            samples = self.dataset.samples
-        return self.dataset.get_majority_vote_for_samples(samples)
+            samples = dataset.samples
+        return dataset.get_majority_vote_for_samples(samples)
 
-    def weighted_majority_vote(self,
-                               samples: Union[List, np.ndarray],
-                               dataset: Dataset,
-                               p_ests: dict):
-        pass
-
-    def weighted_vote(self,
+    @staticmethod
+    def weighted_vote(dataset: Dataset,
                       samples: Union[List, np.ndarray],
-                      dataset: Dataset,
                       p_ests: dict,
-                      selectivity: float = 0.5,
-                      blocked_workers: np.ndarray = None):
+                      selectivity: float,
+                      blocked_workers: np.ndarray):
         """
         As presented in Lemma 4 in "Evaluating the Crowd with Confidence"
 
@@ -34,10 +70,11 @@ class VoteAggregator:
         :param selectivity: The prior/probability of a sample being positive (having 1 as the true value).
         :param blocked_workers: A list of blocked workers (i.e. spammers) that should not be considered for voting.
         """
-        if samples is None:
-            samples = self.dataset.samples
+        if selectivity is None:
+            alpha = 0
+        else:
+            alpha = np.log(selectivity / (1 - selectivity))
 
-        alpha = np.log(selectivity / (1 - selectivity))
         betas = np.zeros(len(samples))
         for i, sample in enumerate(samples):
             # Get all the workers that worked on this sample
@@ -57,10 +94,17 @@ class VoteAggregator:
             # Transform the answers from {0, 1} to {-1, 1}
             answers = {k: -1 if v == 0 else 1 for k, v in answers.items()}
             answers = np.fromiter(answers.values(), dtype=int)
-            # print('Answers', answers)
+
+            error_rate_zero_filter = np.where(error_rates == 0)[0]
+            error_rates = np.delete(error_rates, error_rate_zero_filter)
+            answers = np.delete(answers, error_rate_zero_filter)
 
             beta = np.sum(answers * np.log((1 - error_rates) / error_rates))
             betas[i] = beta
 
+
+
         betas = np.array(betas)
-        return np.where(alpha + betas > 0, 1, 0)
+        results = np.where(alpha + betas > 0, 1, 0)
+
+        return results

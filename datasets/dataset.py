@@ -11,11 +11,6 @@ class Dataset(ABC):
                  prefilter_threshold: float = 0.4,
                  debug: bool = False):
         """
-            dataframe (pandas.DataFrame): The data of the dataset.
-            dataframe should include the following columns:
-                - worker
-                - sample
-                - answer
 
         :param dataframe: The data of the dataset.
         dataframe should include the following columns:

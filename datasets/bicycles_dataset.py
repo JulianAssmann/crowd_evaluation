@@ -3,12 +3,15 @@ import pandas as pd
 
 
 class BicyclesDataset(GroundTruthDataset):
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, excluded_workers: list[int] = None):
         dataframe = pd.read_csv(filepath, index_col=0)
         dataframe.rename(columns={
             'image': 'sample',
             'user': 'worker',
         }, inplace=True)
+
+        if excluded_workers is not None:
+            dataframe = dataframe[~dataframe['worker'].isin(excluded_workers)]
 
         self._cant_solve = dataframe[dataframe['cant_solve'] == 1]
         self._corrupt_data = dataframe[dataframe['corrupt_data'] == 1]

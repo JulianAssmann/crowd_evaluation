@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List, Union
 
-from crowd_evaluation import ConfidenceEvaluatorC, OldEvaluator
+from crowd_evaluation import ConfidenceEvaluatorNew, ConfidenceEvaluatorOld
 from datasets import Dataset, GroundTruthDataset, SyntheticDataset
 import plotly.graph_objects as go
 import os
@@ -70,7 +70,7 @@ def visualize_error_rates(dataset: Dataset,
         margin=dict(r=5, l=5, t=margin_top, b=5))
     fig.show()
     if filename is not None:
-        fig.write_image(filename, scale=10)
+        fig.write_image(filename, scale=5)
 
 
 def say(msg="Finish", voice="Victoria"):

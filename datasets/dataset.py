@@ -29,13 +29,9 @@ class Dataset(ABC):
 
         if prefilter_mode == 'majority_vote' or prefilter_mode == 'truth':
             self._df = self._filter(self._df, prefilter_mode, prefilter_threshold)
-        elif prefilter_mode is None:
-            pass
-        else:
-            raise ValueError('No valid prefilter_mode')
 
-        self._workers = self._df['worker'].unique()
-        self._samples = self._df['sample'].unique()
+        self._workers = self._df.sort_values(by='worker')['worker'].unique()
+        self._samples = self._df.sort_values(by='sample')['sample'].unique()
 
         # Create dataframe that stores shared samples for each 2-worker combination
         workers_to_samples = self._df.groupby('worker')['sample'].agg(set)
@@ -189,9 +185,6 @@ class Dataset(ABC):
 
         :return: The shared samples between worker1, worker2 and potentially worker 3 (if not None).
         """
-        assert (worker1 != worker2)
-        assert (worker1 != worker3)
-        assert (worker2 != worker3)
 
         w1w2_shared = self._workers_shared_samples[frozenset([worker1, worker2])]
 
@@ -227,7 +220,7 @@ class Dataset(ABC):
 
     def find_peers_for_worker(self, worker: int,
                               peer_count: Optional[int] = None,
-                              min_samples: Optional[int] = None) -> Tuple[List[int], List[str]]:
+                              min_samples: Optional[int] = 0) -> Tuple[List[int], List[str]]:
         """
         Finds peers for the given worker that worked on the same tasks.
 
@@ -237,7 +230,8 @@ class Dataset(ABC):
         :param min_samples: The minimum number of samples that the workers have to share.
         None means that peer_count is the only factor influencing the number of peers. Defaults to None.
 
-        :return: A list of the peers and the shared samples.
+        :return: A tuple containing the list of the peers and the shared samples,
+         or empty lists when not enough (<2) peers were found that shared at least min_samples samples.
         """
 
         peers = []
@@ -247,8 +241,6 @@ class Dataset(ABC):
             self._grouped_by_worker.get_group(worker)['sample'])
 
         for i, frequency in enumerate(self._joint_task_frequencies[worker].sort_values(ascending=False)):
-
-
             if i == worker:
                 continue
             if peer_count is not None and i > peer_count - 1:
@@ -270,8 +262,9 @@ class Dataset(ABC):
                 # shared_samples.append(list(shared_samples_set))
 
         if len(peers) < 2:
-            raise ValueError('Not enough peers found for worker ' + str(worker) + ' that share at least ' + str(
-                min_samples) + ' samples.')
+            return [], []
+            # raise ValueError('Not enough peers found for worker ' + str(worker) + ' that share at least ' + str(
+            #     min_samples) + ' samples.')
 
         return peers, list(shared_samples_set)
 

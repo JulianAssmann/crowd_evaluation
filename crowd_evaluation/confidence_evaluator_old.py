@@ -8,7 +8,7 @@ from .utils import generate_superworkers_exhaustively, majority_vote
 from datasets import Dataset
 
 
-class OldEvaluator(ConfidenceEvaluator):
+class ConfidenceEvaluatorOld(ConfidenceEvaluator):
     def __init__(self, dataset: Dataset, debug: bool = False):
         super().__init__(dataset)
         self.debug = debug
@@ -49,7 +49,7 @@ class OldEvaluator(ConfidenceEvaluator):
                                         worker: int,
                                         peer_count: Optional[int] = None,
                                         min_samples: Optional[int] = None,
-                                        method: str = "exhaustive",
+                                        method: str = "greedy",
                                         confidence: float = 0.9,
                                         wilson: bool = True) -> Tuple[float, float]:
         """
@@ -67,6 +67,9 @@ class OldEvaluator(ConfidenceEvaluator):
         if self.debug:
             print('Evaluating worker', worker, 'with the', method, 'method...')
         peers, samples = self.dataset.find_peers_for_worker(worker, peer_count=peer_count, min_samples=min_samples)
+        if len(peers) == 0:
+            return 0, 0
+
         if method == "exhaustive":
             # Generate all possible superworker combinations (exhaustively).
             superworker_groups = generate_superworkers_exhaustively(peers)

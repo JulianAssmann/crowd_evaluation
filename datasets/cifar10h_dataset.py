@@ -1,12 +1,17 @@
 import numpy as np
-from typing import List
+from typing import List, Tuple
 
 from . import GroundTruthDataset
 import pandas as pd
 
 
 class CIFAR10HDataset(GroundTruthDataset):
-    def __init__(self, filepath: str, binary_categories: List = None):
+    def __init__(self,
+                 filepath: str,
+                 categories: Tuple[List[str], List[str]] = (['cat'], ['dog']),
+                 prefilter_mode: str = None,
+                 prefilter_threshold: float = 0.4,
+                 debug: bool = False):
         df = pd.read_csv(filepath)
         df.rename(columns={
             'image_filename': 'sample',
@@ -15,21 +20,31 @@ class CIFAR10HDataset(GroundTruthDataset):
             'chosen_category': 'answer'
         }, inplace=True)
 
-        if binary_categories is not None:
-            df = df[(df['truth'] == binary_categories[0]) | (df['truth'] == binary_categories[1])]
-
         # Calculate error rates from attention checks
         self.attn_check_error_rates = {}
         worker_df = df[df['is_attn_check'] == True].groupby('worker')
+
         for worker in df['worker'].unique():
-            self.attn_check_error_rates[worker] = \
+            attention_check_error_rate = \
                 1.0 - np.count_nonzero(worker_df.get_group(worker)['correct_guess']) / len(worker_df.get_group(worker))
+            self.attn_check_error_rates[worker] = attention_check_error_rate
+
+            if prefilter_mode == "attention_checks" and attention_check_error_rate > prefilter_threshold:
+                df = df[df['worker'] != worker]
+
+        df = df[
+            (df['truth'].isin(categories[0])) |
+            (df['truth'].isin(categories[1]))]
+
+        df['truth'] = (df['truth'].isin(categories[0])).astype(int)
+        df['answer'] = (df['answer'].isin(categories[0])).astype(int)
+        print(df.head())
 
         # df.drop(df[df['is_attn_check'] == 1].index, inplace=True)
         df.drop(columns=['reaction_time', 'time_elapsed', 'cifar10_test_test_idx'],
                 inplace=True)
 
-        super().__init__(df)
+        super().__init__(df, prefilter_mode=prefilter_mode, prefilter_threshold=prefilter_threshold, debug=debug)
 
     def get_attention_check_error_rate(self, worker: int) -> float:
         """

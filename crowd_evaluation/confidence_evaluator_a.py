@@ -16,7 +16,8 @@ class ConfidenceEvaluatorA(ConfidenceEvaluator):
     def evaluate_worker_with_confidence(self,
                                         worker: int,
                                         confidence: float = 0.9,
-                                        method: str = 'std') -> Tuple[float, float]:
+                                        method: str = 'std',
+                                        **kwargs) -> Tuple[float, float]:
         workers = set(self.dataset.workers)
         workers.discard(worker)
         worker1 = workers.pop()

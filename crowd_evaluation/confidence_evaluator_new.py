@@ -9,7 +9,7 @@ from crowd_evaluation.confidence_evaluator import ConfidenceEvaluator
 
 # Implements case C (m-worker binary non-regular) from the paper.
 # Only supports binary classes.
-class ConfidenceEvaluatorC(ConfidenceEvaluator):
+class ConfidenceEvaluatorNew(ConfidenceEvaluator):
     def __init__(self, dataset: Dataset, debug: bool = False):
         super().__init__(dataset)
         self.debug = debug
